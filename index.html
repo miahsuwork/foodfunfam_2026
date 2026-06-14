@@ -27,14 +27,12 @@
   #foot{grid-column:1; grid-row:2; background:var(--paper);
     border-right:1px solid var(--line); border-top:1px solid var(--line)}
   #map{grid-column:2; grid-row:1 / 3; height:100%; width:100%}
-  /* header */
   .head{padding:15px 18px 12px; position:relative;
     background:linear-gradient(120deg,var(--ink),#1f5560 60%,var(--sea)); color:#fdf6ea}
   .head h1{margin:0; font-size:18px; letter-spacing:.4px; font-weight:800}
   .head .sub{margin-top:3px; font-size:12px; opacity:.85}
   .head .sun{display:inline-block; width:9px;height:9px;border-radius:50%;
     background:var(--sun); box-shadow:0 0 0 3px rgba(224,116,47,.25); margin-right:6px}
-  /* chips */
   .chips{display:flex; flex-wrap:wrap; gap:6px; padding:11px 14px;
     border-bottom:1px solid var(--line)}
   .chip{cursor:pointer; user-select:none; font-size:12px; font-weight:700;
@@ -43,7 +41,6 @@
   .chip .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
   .chip.off{opacity:.32; filter:grayscale(.5)}
   .chip.all{color:var(--ink); border-color:var(--ink)}
-  /* list */
   .list{overflow:auto; padding:6px 10px 18px; min-height:0}
   .day{margin:10px 4px 4px}
   .day h2{font-size:13px; margin:0 0 6px; display:flex; align-items:center; gap:8px}
@@ -60,15 +57,20 @@
   .stop .meta{color:var(--muted); font-size:11.5px; margin-top:1px}
   .stop .leg{color:var(--sea); font-size:11.5px; font-weight:700; margin-top:2px}
   .stop.start .leg{color:var(--muted); font-weight:600}
-  /* foot */
   #foot .inner{font-size:11px; color:var(--muted); padding:9px 16px; line-height:1.45}
   #foot b{color:var(--ink)}
-  /* hamburger */
   #ham{display:none; position:fixed; z-index:1100; top:10px; left:10px;
     width:44px;height:44px;border:none;border-radius:11px; cursor:pointer;
     background:var(--ink); color:#fdf6ea; font-size:20px; line-height:1;
     box-shadow:0 3px 10px rgba(0,0,0,.3)}
-  /* map pins */
+  #status{position:fixed; z-index:1200; top:12px; left:50%; transform:translateX(-50%);
+    background:rgba(23,58,68,.93); color:#fdf6ea; font-size:12px; font-weight:700;
+    padding:7px 14px; border-radius:999px; box-shadow:0 3px 12px rgba(0,0,0,.28);
+    display:flex; align-items:center; gap:8px; transition:opacity .5s; max-width:90vw}
+  #status.hide{opacity:0; pointer-events:none}
+  #status .spin{flex:0 0 auto; width:12px;height:12px;border:2px solid #fdf6ea;
+    border-top-color:transparent; border-radius:50%; animation:sp .8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
   .pin{display:grid;place-items:center; width:26px;height:26px;border-radius:50% 50% 50% 2px;
     transform:rotate(45deg); color:#fff; font-weight:800; font-size:12px;
     box-shadow:0 2px 6px rgba(0,0,0,.35); border:2px solid #fff}
@@ -83,26 +85,25 @@
   .pop a{display:inline-block; font-size:12.5px; font-weight:700; color:#fff;
     background:var(--sea); padding:6px 10px; border-radius:7px; text-decoration:none}
   .leaflet-popup-content{margin:11px 13px}
-  /* ---------- mobile ---------- */
   @media (max-width:760px){
     #app{grid-template-columns:1fr; grid-template-rows:1fr}
     #map{grid-column:1; grid-row:1}
     #ham{display:block}
     #panel{position:fixed; z-index:1000; top:0; left:0; bottom:0;
       width:min(87vw,370px); transform:translateX(-100%);
-      transition:transform .25s ease; box-shadow:0 0 34px rgba(0,0,0,.35);
-      border-right:1px solid var(--line)}
+      transition:transform .25s ease; box-shadow:0 0 34px rgba(0,0,0,.35)}
     body.nav-open #panel{transform:none}
     .head{padding-left:62px}
-    .list{padding-bottom:14px}
     #foot{position:fixed; z-index:900; left:0; right:0; bottom:0;
       border-right:none; box-shadow:0 -2px 12px rgba(0,0,0,.12)}
     #foot .inner{padding:8px 14px}
+    #status{top:auto; bottom:calc(var(--foot-h) + 12px)}
   }
 </style>
 </head>
 <body>
 <button id="ham" aria-label="開關行程清單">☰</button>
+<div id="status"><span class="spin"></span>載入真實道路路線…</div>
 <div id="app">
   <aside id="panel">
     <div class="head">
@@ -113,7 +114,7 @@
     <div class="list" id="list"></div>
   </aside>
   <div id="foot"><div class="inner">
-    路線為停留順序<b>示意連線</b>，非實際道路；車程／距離為概估，實際依路況與連假而異。
+    路線為 <b>OSRM 計算的實際道路</b>；距離為道路實距、時間為順暢路況估計（連假/尖峰會更久）。
     導航請用各點「在 Google 地圖開啟」或每日「本日導航」。
   </div></div>
   <div id="map"></div>
@@ -142,7 +143,7 @@ const DAYS = [
    nav:"https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=マリンタラソ出雲&destination=米子鬼太郎空港&waypoints=出雲大社|JR出雲市駅"},
 ];
 const STOPS = [
-  {d:1,pin:"1",name:"米子鬼太郎機場",lat:35.4952241,lng:133.2381705,t:"16:50",note:"下午抵達取車",leg:""},
+  {d:1,pin:"1",name:"米子鬼太郎機場",lat:35.4952241,lng:133.2381705,t:"15:00",note:"下午抵達取車",leg:""},
   {d:1,pin:"2",name:"Hotel Route Inn 米子",lat:35.4291602,lng:133.3398432,t:"入住",note:"天然溫泉大浴場・無障礙房",leg:"🚗 約15 km・25分"},
 
   {d:2,start:1,pin:"宿",name:"Hotel Route Inn 米子",lat:35.4291602,lng:133.3398432,t:"前晚住宿",note:"出發點",leg:""},
@@ -171,7 +172,7 @@ const STOPS = [
 
   {d:7,start:1,pin:"宿",name:"マリンタラソ出雲",lat:35.2868478,lng:132.6275549,t:"前晚住宿",note:"出發點",leg:""},
   {d:7,pin:"1",name:"石見銀山世界遺產中心",lat:35.1059541,lng:132.4517518,t:"上午",note:"停車轉乘巴士進大森",leg:"🏨出發 約33 km・40分"},
-  {d:7,pin:"2",name:"大森代官所跡・老街",lat:35.1220906,lng:132.4478233,t:"含午餐",note:"禁自駕;搭ぎんざんカート或逛平坦老街",leg:"🚌 巴士約10分(禁自駕)"},
+  {d:7,pin:"2",name:"大森代官所跡・老街",lat:35.1220906,lng:132.4478233,t:"含午餐",note:"禁自駕;搭ぎんざんカート或逛平坦老街",leg:"🚌 巴士約10分(禁自駕)",keepLeg:1},
   {d:7,pin:"3",name:"Workman 出雲（今市町）",lat:35.3681336,lng:132.7620453,t:"採買",note:"有停車場・廁所・休息站",leg:"🚗 約51 km・60分"},
   {d:7,pin:"4",name:"マリンタラソ出雲",lat:35.2868478,lng:132.6275549,t:"回飯店",note:"陽台/海邊看日本海夕陽",leg:"🚗 約20 km・20分"},
 
@@ -181,34 +182,48 @@ const STOPS = [
   {d:8,pin:"3",name:"米子鬼太郎機場",lat:35.4952241,lng:133.2381705,t:"12:00",note:"還車15:00前;班機17:50;可順遊境港",leg:"🚗 約60 km・80分"},
 ];
 STOPS.forEach((s,i)=>s.i=i);
-const dayById=Object.fromEntries(DAYS.map(d=>[d.id,d]));
 
 const map=L.map('map',{zoomControl:false}).setView([35.4,133.3],9);
 L.control.zoom({position:'topright'}).addTo(map);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
   maxZoom:19, attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
 
-const groups={}, markers={};
+const groups={}, markers={}, straight={};
 DAYS.forEach(d=>groups[d.id]=L.layerGroup().addTo(map));
+
+function popupHTML(s){
+  const g=`https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`;
+  return `<div class="pop"><b>${s.name}</b><div class="m">${s.t}　·　${s.note}</div>`+
+    (s.leg?`<div class="lg">${s.leg}</div>`:``)+
+    `<a href="${g}" target="_blank" rel="noopener">在 Google 地圖開啟導航</a></div>`;
+}
+function fmtLeg(prefix,meters,seconds){
+  const km=meters/1000;
+  const kmStr=km<10?km.toFixed(1):Math.round(km);
+  const min=Math.max(1,Math.round(seconds/60));
+  return `${prefix}約${kmStr} km・${min}分`;
+}
+function updateLeg(s){
+  const span=document.querySelector(`.legtxt[data-i="${s.i}"]`);
+  if(span) span.textContent=s.leg;
+  if(markers[s.i]) markers[s.i].setPopupContent(popupHTML(s));
+}
+
 DAYS.forEach(d=>{
   const pts=STOPS.filter(s=>s.d===d.id);
   if(pts.length>1)
-    L.polyline(pts.map(p=>[p.lat,p.lng]),
-      {color:d.color,weight:3,opacity:.75,dashArray:'7,7'}).addTo(groups[d.id]);
+    straight[d.id]=L.polyline(pts.map(p=>[p.lat,p.lng]),
+      {color:d.color,weight:3,opacity:.6,dashArray:'6,8'}).addTo(groups[d.id]);
   pts.forEach(s=>{
-    const html = s.start
+    const html=s.start
       ? `<div class="pin-hotel" style="color:${d.color};border-color:${d.color}">宿</div>`
       : `<div class="pin" style="background:${d.color}"><span>${s.pin}</span></div>`;
     const icon=L.divIcon({className:'',html,
       iconSize:s.start?[24,24]:[26,26],
       iconAnchor:s.start?[12,12]:[13,24],
       popupAnchor:s.start?[0,-14]:[0,-22]});
-    const g=`https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`;
     const m=L.marker([s.lat,s.lng],{icon}).addTo(groups[d.id]);
-    m.bindPopup(
-      `<div class="pop"><b>${s.name}</b><div class="m">${s.t}　·　${s.note}</div>`+
-      (s.leg?`<div class="lg">${s.leg}</div>`:``)+
-      `<a href="${g}" target="_blank" rel="noopener">在 Google 地圖開啟導航</a></div>`);
+    m.bindPopup(popupHTML(s));
     markers[s.i]=m;
   });
 });
@@ -245,7 +260,8 @@ DAYS.forEach(d=>{
       `<div class="num" style="${s.start?`color:${d.color}`:`background:${d.color}`}">${s.pin}</div>`+
       `<div class="body"><div class="nm">${s.name}</div>`+
       `<div class="meta">${s.t}　·　${s.note}</div>`+
-      (s.leg?`<div class="leg">${s.leg}</div>`:``)+`</div>`);
+      (s.leg?`<div class="leg"><span class="legtxt" data-i="${s.i}">${s.leg}</span></div>`:``)+
+      `</div>`);
     row.onclick=()=>{
       setDay(d.id,true);
       map.setView([s.lat,s.lng],13,{animate:true});
@@ -259,10 +275,39 @@ DAYS.forEach(d=>{
 
 /* hamburger */
 const ham=document.getElementById('ham');
-ham.onclick=()=>{
-  const open=document.body.classList.toggle('nav-open');
-  ham.textContent=open?'✕':'☰';
-};
+ham.onclick=()=>{ const open=document.body.classList.toggle('nav-open'); ham.textContent=open?'✕':'☰'; };
+
+/* ---- OSRM real road routing (no API key) ---- */
+async function routeDay(d){
+  const pts=STOPS.filter(s=>s.d===d.id);
+  if(pts.length<2) return;
+  const coords=pts.map(p=>`${p.lng},${p.lat}`).join(';');
+  const url=`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
+  const res=await fetch(url);
+  const j=await res.json();
+  if(j.code!=='Ok'||!j.routes||!j.routes[0]) throw new Error('no route');
+  const route=j.routes[0];
+  const latlngs=route.geometry.coordinates.map(c=>[c[1],c[0]]);
+  if(straight[d.id]){ groups[d.id].removeLayer(straight[d.id]); straight[d.id]=null; }
+  L.polyline(latlngs,{color:d.color,weight:4,opacity:.85}).addTo(groups[d.id]);
+  (route.legs||[]).forEach((lg,k)=>{
+    const target=pts[k+1];
+    if(!target||target.keepLeg) return;
+    const prefix=(k===0 && pts[0].start)?'🏨出發 ':'🚗 ';
+    target.leg=fmtLeg(prefix,lg.distance,lg.duration);
+    updateLeg(target);
+  });
+}
+const statusEl=document.getElementById('status');
+(async ()=>{
+  const results=await Promise.allSettled(DAYS.map(routeDay));
+  const fail=results.filter(r=>r.status==='rejected').length;
+  statusEl.querySelector('.spin')?.remove();
+  statusEl.textContent = fail
+    ? `已載入道路路線（${fail} 天暫以概估顯示，可重新整理再試）`
+    : '已載入真實道路路線 ✓';
+  setTimeout(()=>statusEl.classList.add('hide'), fail?6500:2600);
+})();
 
 function el(tag,cls,html){const e=document.createElement(tag);
   if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e;}
