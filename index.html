@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-<title>愛吃愛玩家族自駕地圖・2026 9/18–9/25</title>
+<title>愛吃愛玩家族自駕地圖・9/18–9/25</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <style>
   :root{
     --ink:#173a44; --sand:#f7f2e8; --paper:#fffdf8; --sun:#e0742f; --sea:#2f7d8a;
-    --line:#e4dccb; --muted:#6b6357;
+    --line:#e4dccb; --muted:#6b6357; --foot-h:58px;
     --d1:#e0613a; --d2:#caa017; --d3:#2f9e8f; --d4:#6a8f3c;
     --d5:#b5651d; --d6:#3d6db5; --d7:#8a5a9e; --d8:#c0392b;
   }
@@ -20,18 +20,22 @@
       "Microsoft JhengHei",system-ui,sans-serif;
     color:var(--ink); background:var(--sand);
   }
-  #app{display:grid; grid-template-columns:360px 1fr; height:100dvh}
-  /* ---- Sidebar ---- */
-  #panel{display:flex; flex-direction:column; background:var(--paper);
-    border-right:1px solid var(--line); min-height:0}
-  .head{padding:16px 18px 12px; background:
-      linear-gradient(120deg,var(--ink),#1f5560 60%,var(--sea));
-    color:#fdf6ea}
-  .head h1{margin:0; font-size:18px; letter-spacing:.5px; font-weight:800}
+  #app{display:grid; grid-template-columns:368px 1fr; grid-template-rows:1fr auto;
+    height:100dvh}
+  #panel{grid-column:1; grid-row:1; display:flex; flex-direction:column;
+    background:var(--paper); border-right:1px solid var(--line); min-height:0}
+  #foot{grid-column:1; grid-row:2; background:var(--paper);
+    border-right:1px solid var(--line); border-top:1px solid var(--line)}
+  #map{grid-column:2; grid-row:1 / 3; height:100%; width:100%}
+  /* header */
+  .head{padding:15px 18px 12px; position:relative;
+    background:linear-gradient(120deg,var(--ink),#1f5560 60%,var(--sea)); color:#fdf6ea}
+  .head h1{margin:0; font-size:18px; letter-spacing:.4px; font-weight:800}
   .head .sub{margin-top:3px; font-size:12px; opacity:.85}
   .head .sun{display:inline-block; width:9px;height:9px;border-radius:50%;
     background:var(--sun); box-shadow:0 0 0 3px rgba(224,116,47,.25); margin-right:6px}
-  .chips{display:flex; flex-wrap:wrap; gap:6px; padding:12px 14px;
+  /* chips */
+  .chips{display:flex; flex-wrap:wrap; gap:6px; padding:11px 14px;
     border-bottom:1px solid var(--line)}
   .chip{cursor:pointer; user-select:none; font-size:12px; font-weight:700;
     padding:5px 10px; border-radius:999px; border:1.5px solid currentColor;
@@ -39,7 +43,8 @@
   .chip .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
   .chip.off{opacity:.32; filter:grayscale(.5)}
   .chip.all{color:var(--ink); border-color:var(--ink)}
-  .list{overflow:auto; padding:6px 10px 16px; min-height:0}
+  /* list */
+  .list{overflow:auto; padding:6px 10px 18px; min-height:0}
   .day{margin:10px 4px 4px}
   .day h2{font-size:13px; margin:0 0 6px; display:flex; align-items:center; gap:8px}
   .day h2 .bar{width:14px;height:14px;border-radius:4px}
@@ -47,33 +52,57 @@
     color:#fff; padding:4px 9px; border-radius:7px; white-space:nowrap}
   .stop{display:flex; gap:9px; padding:7px 8px; border-radius:9px; cursor:pointer}
   .stop:hover{background:#f3eee2}
-  .stop .num{flex:0 0 auto; width:22px;height:22px;border-radius:50%;
+  .stop .num{flex:0 0 auto; width:23px;height:23px;border-radius:50%;
     color:#fff; font-size:12px; font-weight:800; display:grid; place-items:center}
-  .stop .body{font-size:13px; line-height:1.35}
+  .stop.start .num{background:#fff!important; border:2px solid currentColor; font-size:11px}
+  .stop .body{font-size:13px; line-height:1.36}
   .stop .nm{font-weight:700}
   .stop .meta{color:var(--muted); font-size:11.5px; margin-top:1px}
-  .foot{font-size:11px; color:var(--muted); padding:10px 16px; border-top:1px solid var(--line)}
-  .foot a{color:var(--sea)}
-  /* ---- Map ---- */
-  #map{height:100%; width:100%}
+  .stop .leg{color:var(--sea); font-size:11.5px; font-weight:700; margin-top:2px}
+  .stop.start .leg{color:var(--muted); font-weight:600}
+  /* foot */
+  #foot .inner{font-size:11px; color:var(--muted); padding:9px 16px; line-height:1.45}
+  #foot b{color:var(--ink)}
+  /* hamburger */
+  #ham{display:none; position:fixed; z-index:1100; top:10px; left:10px;
+    width:44px;height:44px;border:none;border-radius:11px; cursor:pointer;
+    background:var(--ink); color:#fdf6ea; font-size:20px; line-height:1;
+    box-shadow:0 3px 10px rgba(0,0,0,.3)}
+  /* map pins */
   .pin{display:grid;place-items:center; width:26px;height:26px;border-radius:50% 50% 50% 2px;
     transform:rotate(45deg); color:#fff; font-weight:800; font-size:12px;
     box-shadow:0 2px 6px rgba(0,0,0,.35); border:2px solid #fff}
   .pin span{transform:rotate(-45deg)}
-  .pop{font-family:inherit; min-width:180px}
+  .pin-hotel{display:grid;place-items:center; width:24px;height:24px;border-radius:50%;
+    background:#fff; font-weight:800; font-size:11px; border:2.5px solid #999;
+    box-shadow:0 2px 6px rgba(0,0,0,.3)}
+  .pop{font-family:inherit; min-width:185px}
   .pop b{font-size:14px}
-  .pop .m{color:#555; font-size:12px; margin:3px 0 6px}
+  .pop .m{color:#555; font-size:12px; margin:3px 0 2px}
+  .pop .lg{color:var(--sea); font-size:12px; font-weight:700; margin:0 0 7px}
   .pop a{display:inline-block; font-size:12.5px; font-weight:700; color:#fff;
     background:var(--sea); padding:6px 10px; border-radius:7px; text-decoration:none}
   .leaflet-popup-content{margin:11px 13px}
+  /* ---------- mobile ---------- */
   @media (max-width:760px){
-    #app{grid-template-columns:1fr; grid-template-rows:auto 1fr}
-    .list{max-height:38dvh}
-    #map{min-height:0}
+    #app{grid-template-columns:1fr; grid-template-rows:1fr}
+    #map{grid-column:1; grid-row:1}
+    #ham{display:block}
+    #panel{position:fixed; z-index:1000; top:0; left:0; bottom:0;
+      width:min(87vw,370px); transform:translateX(-100%);
+      transition:transform .25s ease; box-shadow:0 0 34px rgba(0,0,0,.35);
+      border-right:1px solid var(--line)}
+    body.nav-open #panel{transform:none}
+    .head{padding-left:62px}
+    .list{padding-bottom:14px}
+    #foot{position:fixed; z-index:900; left:0; right:0; bottom:0;
+      border-right:none; box-shadow:0 -2px 12px rgba(0,0,0,.12)}
+    #foot .inner{padding:8px 14px}
   }
 </style>
 </head>
 <body>
+<button id="ham" aria-label="開關行程清單">☰</button>
 <div id="app">
   <aside id="panel">
     <div class="head">
@@ -82,22 +111,23 @@
     </div>
     <div class="chips" id="chips"></div>
     <div class="list" id="list"></div>
-    <div class="foot">
-      路線為各日停留點順序的<b>示意連線</b>，非實際道路。點任一站可看備註，並用
-      「在 Google 地圖開啟」導航；每天標題旁的「本日導航」會在 Google 地圖開出整日路線。
-    </div>
   </aside>
+  <div id="foot"><div class="inner">
+    路線為停留順序<b>示意連線</b>，非實際道路；車程／距離為概估，實際依路況與連假而異。
+    導航請用各點「在 Google 地圖開啟」或每日「本日導航」。
+  </div></div>
   <div id="map"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
   integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
+function getCSS(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 const DAYS = [
   {id:1,label:"9/18 抵達→米子",color:getCSS('--d1'),
    nav:"https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=米子鬼太郎空港&destination=ホテルルートイン米子"},
   {id:2,label:"9/19 鳥取砂丘線",color:getCSS('--d2'),
-   nav:"https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=白兎神社 鳥取&destination=鳥取グリーンホテルモーリス&waypoints=大江ノ郷ヴィレッジ|鳥取砂丘 砂の美術館"},
+   nav:"https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=ホテルルートイン米子&destination=鳥取グリーンホテルモーリス&waypoints=白兎神社 鳥取|大江ノ郷ヴィレッジ|鳥取砂丘 砂の美術館"},
   {id:3,label:"9/20 浦富海岸",color:getCSS('--d3'),
    nav:"https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=鳥取グリーンホテルモーリス&destination=鳥取グリーンホテルモーリス&waypoints=浦富海岸島めぐり遊覧船"},
   {id:4,label:"9/21 大山→羽合",color:getCSS('--d4'),
@@ -105,112 +135,134 @@ const DAYS = [
   {id:5,label:"9/22 倉吉休息日",color:getCSS('--d5'),
    nav:"https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=はわい温泉 望湖楼&destination=はわい温泉 望湖楼&waypoints=倉吉白壁土蔵群"},
   {id:6,label:"9/23 松江→多伎",color:getCSS('--d6'),
-   nav:"https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=玉作湯神社 玉造温泉&destination=マリンタラソ出雲&waypoints=松江城|島根県立美術館"},
+   nav:"https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=はわい温泉 望湖楼&destination=マリンタラソ出雲&waypoints=玉作湯神社 玉造温泉|松江城|島根県立美術館"},
   {id:7,label:"9/24 石見銀山",color:getCSS('--d7'),
    nav:"https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=マリンタラソ出雲&destination=マリンタラソ出雲&waypoints=石見銀山世界遺産センター|ワークマン出雲今市店"},
   {id:8,label:"9/25 出雲→返程",color:getCSS('--d8'),
    nav:"https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=マリンタラソ出雲&destination=米子鬼太郎空港&waypoints=出雲大社|JR出雲市駅"},
 ];
 const STOPS = [
-  {d:1,n:1,name:"米子鬼太郎機場",lat:35.4952241,lng:133.2381705,t:"15:00",note:"下午抵達取車"},
-  {d:1,n:2,name:"Hotel Route Inn 米子",lat:35.4291602,lng:133.3398432,t:"入住",note:"天然溫泉大浴場・無障礙房"},
-  {d:2,n:1,name:"白兔神社",lat:35.524206,lng:134.115066,t:"09:00・50分",note:"求姻緣;本殿小坡階梯,道の駅可休息"},
-  {d:2,n:2,name:"大江ノ郷ヴィレッジ",lat:35.3550946,lng:134.2502028,t:"11:30・午餐",note:"連假先訂位(11–14點);園區有坡道"},
-  {d:2,n:3,name:"砂の美術館",lat:35.5396253,lng:134.2383683,t:"14:00・60分",note:"室內平坦有電梯・長輩主力;砂丘遠觀即可"},
-  {d:2,n:4,name:"鳥取莫里斯綠色飯店",lat:35.4959182,lng:134.2260742,t:"入住",note:"大浴場・夜間免費拉麵"},
-  {d:3,n:1,name:"浦富海岸 遊覽船",lat:35.5795156,lng:134.2978137,t:"09:30・遊船40分",note:"看天候;上下船需協助,可岸邊看海"},
-  {d:3,n:2,name:"鳥取莫里斯綠色飯店",lat:35.4959182,lng:134.2260742,t:"住同飯店",note:"下午鳥取市區/久松公園彈性"},
-  {d:4,n:1,name:"大山まきばみるくの里",lat:35.3779934,lng:133.5106188,t:"10:30・午餐",note:"看大山+霜淇淋;週一有開;停車在上方走緩坡"},
-  {d:4,n:2,name:"望湖樓（羽合溫泉）",lat:35.4774628,lng:133.8850898,t:"入住",note:"湖上露天風呂・無障礙房・長輩泡湯主力"},
-  {d:5,n:1,name:"倉吉 白壁土蔵群",lat:35.4321485,lng:133.8244348,t:"上午・含午餐",note:"老街沿河平坦・咖啡長椅多"},
-  {d:5,n:2,name:"望湖樓（羽合溫泉）",lat:35.4774628,lng:133.8850898,t:"住同飯店",note:"東郷湖畔散步・多泡湯"},
-  {d:6,n:1,name:"玉作湯神社/玉造溫泉街",lat:35.413682,lng:133.0116657,t:"午餐",note:"溫泉街平坦+足湯;許願石有石階"},
-  {d:6,n:2,name:"松江城（可省略）",lat:35.4751335,lng:133.0506783,t:"視時間",note:"天守陡;長輩改搭堀川遊覽船,趕就跳過"},
-  {d:6,n:3,name:"島根縣立美術館",lat:35.4600082,lng:133.0524668,t:"宍道湖夕陽",note:"日落約18:00・兔子像・戶外免費"},
-  {d:6,n:4,name:"マリンタラソ出雲",lat:35.2868478,lng:132.6275549,t:"入住・約20:00",note:"海水泳池非溫泉;泳池受付~20:00"},
-  {d:7,n:1,name:"石見銀山世界遺產中心",lat:35.1059541,lng:132.4517518,t:"上午",note:"停車轉乘巴士進大森"},
-  {d:7,n:2,name:"大森代官所跡・老街",lat:35.1220906,lng:132.4478233,t:"含午餐",note:"禁自駕;搭ぎんざんカート或只逛平坦老街"},
-  {d:7,n:3,name:"Workman 出雲（今市町）",lat:35.3681336,lng:132.7620453,t:"採買",note:"有停車場・廁所・休息站"},
-  {d:7,n:4,name:"マリンタラソ出雲",lat:35.2868478,lng:132.6275549,t:"回飯店",note:"陽台/海邊看日本海夕陽"},
-  {d:8,n:1,name:"出雲大社",lat:35.4018692,lng:132.6854693,t:"08:00・90分",note:"早上人少;主要參拜平面無階梯"},
-  {d:8,n:2,name:"JR出雲市駅",lat:35.3610255,lng:132.756917,t:"09:50",note:"送2人轉京都(やくも 10:00–10:30)"},
-  {d:8,n:3,name:"米子鬼太郎機場",lat:35.4952241,lng:133.2381705,t:"12:00",note:"還車15:00前;班機17:50;可順遊境港"},
+  {d:1,pin:"1",name:"米子鬼太郎機場",lat:35.4952241,lng:133.2381705,t:"15:00",note:"下午抵達取車",leg:""},
+  {d:1,pin:"2",name:"Hotel Route Inn 米子",lat:35.4291602,lng:133.3398432,t:"入住",note:"天然溫泉大浴場・無障礙房",leg:"🚗 約15 km・25分"},
+
+  {d:2,start:1,pin:"宿",name:"Hotel Route Inn 米子",lat:35.4291602,lng:133.3398432,t:"前晚住宿",note:"出發點",leg:""},
+  {d:2,pin:"1",name:"白兔神社",lat:35.524206,lng:134.115066,t:"09:00・停留50分",note:"求姻緣;本殿小坡階梯,道の駅可休息",leg:"🏨出發 約90 km・50分"},
+  {d:2,pin:"2",name:"大江ノ郷ヴィレッジ",lat:35.3550946,lng:134.2502028,t:"11:30・午餐",note:"連假先訂位(11–14點);園區有坡道",leg:"🚗 約29 km・50分"},
+  {d:2,pin:"3",name:"砂の美術館",lat:35.5396253,lng:134.2383683,t:"14:00・停留60分",note:"室內平坦有電梯・長輩主力",leg:"🚗 約27 km・45分"},
+  {d:2,pin:"4",name:"鳥取莫里斯綠色飯店",lat:35.4959182,lng:134.2260742,t:"入住",note:"大浴場・夜間免費拉麵",leg:"🚗 約6 km・15分"},
+
+  {d:3,start:1,pin:"宿",name:"鳥取莫里斯綠色飯店",lat:35.4959182,lng:134.2260742,t:"前晚住宿",note:"出發點",leg:""},
+  {d:3,pin:"1",name:"浦富海岸 遊覽船",lat:35.5795156,lng:134.2978137,t:"09:30・遊船40分",note:"看天候;上下船需協助,可岸邊看海",leg:"🏨出發 約15 km・35分"},
+  {d:3,pin:"2",name:"鳥取莫里斯綠色飯店",lat:35.4959182,lng:134.2260742,t:"住同飯店",note:"下午鳥取市區/久松公園彈性",leg:"🚗 約15 km・35分"},
+
+  {d:4,start:1,pin:"宿",name:"鳥取莫里斯綠色飯店",lat:35.4959182,lng:134.2260742,t:"前晚住宿",note:"出發點",leg:""},
+  {d:4,pin:"1",name:"大山まきばみるくの里",lat:35.3779934,lng:133.5106188,t:"10:30・午餐",note:"看大山+霜淇淋;週一有開;停車在上方走緩坡",leg:"🏨出發 約86 km・90分"},
+  {d:4,pin:"2",name:"望湖樓（羽合溫泉）",lat:35.4774628,lng:133.8850898,t:"入住",note:"湖上露天風呂・無障礙房・長輩泡湯主力",leg:"🚗 約46 km・60分"},
+
+  {d:5,start:1,pin:"宿",name:"望湖樓（羽合溫泉）",lat:35.4774628,lng:133.8850898,t:"前晚住宿",note:"出發點",leg:""},
+  {d:5,pin:"1",name:"倉吉 白壁土蔵群",lat:35.4321485,lng:133.8244348,t:"上午・含午餐",note:"老街沿河平坦・咖啡長椅多",leg:"🏨出發 約10 km・15分"},
+  {d:5,pin:"2",name:"望湖樓（羽合溫泉）",lat:35.4774628,lng:133.8850898,t:"住同飯店",note:"東郷湖畔散步・多泡湯",leg:"🚗 約10 km・15分"},
+
+  {d:6,start:1,pin:"宿",name:"望湖樓（羽合溫泉）",lat:35.4774628,lng:133.8850898,t:"前晚住宿",note:"出發點",leg:""},
+  {d:6,pin:"1",name:"玉作湯神社/玉造溫泉街",lat:35.413682,lng:133.0116657,t:"午餐",note:"溫泉街平坦+足湯;許願石有石階",leg:"🏨出發 約103 km・110分"},
+  {d:6,pin:"2",name:"松江城（可省略）",lat:35.4751335,lng:133.0506783,t:"視時間",note:"天守陡;長輩改搭堀川遊覽船,趕就跳過",leg:"🚗 約10 km・20分"},
+  {d:6,pin:"3",name:"島根縣立美術館",lat:35.4600082,lng:133.0524668,t:"宍道湖夕陽",note:"日落約18:00・兔子像・戶外免費",leg:"🚗 約2 km・10分"},
+  {d:6,pin:"4",name:"マリンタラソ出雲",lat:35.2868478,lng:132.6275549,t:"入住・約20:00",note:"海水泳池非溫泉;泳池受付~20:00",leg:"🚗 約56 km・80分"},
+
+  {d:7,start:1,pin:"宿",name:"マリンタラソ出雲",lat:35.2868478,lng:132.6275549,t:"前晚住宿",note:"出發點",leg:""},
+  {d:7,pin:"1",name:"石見銀山世界遺產中心",lat:35.1059541,lng:132.4517518,t:"上午",note:"停車轉乘巴士進大森",leg:"🏨出發 約33 km・40分"},
+  {d:7,pin:"2",name:"大森代官所跡・老街",lat:35.1220906,lng:132.4478233,t:"含午餐",note:"禁自駕;搭ぎんざんカート或逛平坦老街",leg:"🚌 巴士約10分(禁自駕)"},
+  {d:7,pin:"3",name:"Workman 出雲（今市町）",lat:35.3681336,lng:132.7620453,t:"採買",note:"有停車場・廁所・休息站",leg:"🚗 約51 km・60分"},
+  {d:7,pin:"4",name:"マリンタラソ出雲",lat:35.2868478,lng:132.6275549,t:"回飯店",note:"陽台/海邊看日本海夕陽",leg:"🚗 約20 km・20分"},
+
+  {d:8,start:1,pin:"宿",name:"マリンタラソ出雲",lat:35.2868478,lng:132.6275549,t:"前晚住宿",note:"出發點",leg:""},
+  {d:8,pin:"1",name:"出雲大社",lat:35.4018692,lng:132.6854693,t:"08:00・停留90分",note:"早上人少;主要參拜平面無階梯",leg:"🏨出發 約18 km・25分"},
+  {d:8,pin:"2",name:"JR出雲市駅",lat:35.3610255,lng:132.756917,t:"09:50",note:"送2人轉京都(やくも 10:00–10:30)",leg:"🚗 約10 km・25分"},
+  {d:8,pin:"3",name:"米子鬼太郎機場",lat:35.4952241,lng:133.2381705,t:"12:00",note:"還車15:00前;班機17:50;可順遊境港",leg:"🚗 約60 km・80分"},
 ];
+STOPS.forEach((s,i)=>s.i=i);
+const dayById=Object.fromEntries(DAYS.map(d=>[d.id,d]));
 
-function getCSS(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
-const dayById = Object.fromEntries(DAYS.map(d=>[d.id,d]));
-
-const map = L.map('map',{zoomControl:true}).setView([35.4,133.3],9);
+const map=L.map('map',{zoomControl:false}).setView([35.4,133.3],9);
+L.control.zoom({position:'topright'}).addTo(map);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-  maxZoom:19, attribution:'&copy; OpenStreetMap contributors'
-}).addTo(map);
+  maxZoom:19, attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
 
-const groups = {};      // day -> L.layerGroup
-const markers = {};     // "d-n" -> marker
-DAYS.forEach(d=>{ groups[d.id]=L.layerGroup().addTo(map); });
-
-// polylines + markers
+const groups={}, markers={};
+DAYS.forEach(d=>groups[d.id]=L.layerGroup().addTo(map));
 DAYS.forEach(d=>{
-  const pts = STOPS.filter(s=>s.d===d.id).sort((a,b)=>a.n-b.n);
-  if(pts.length>1){
-    L.polyline(pts.map(p=>[p.lat,p.lng]),{color:d.color,weight:3,opacity:.75,dashArray:'7,7'})
-      .addTo(groups[d.id]);
-  }
+  const pts=STOPS.filter(s=>s.d===d.id);
+  if(pts.length>1)
+    L.polyline(pts.map(p=>[p.lat,p.lng]),
+      {color:d.color,weight:3,opacity:.75,dashArray:'7,7'}).addTo(groups[d.id]);
   pts.forEach(s=>{
-    const icon = L.divIcon({className:'',html:
-      `<div class="pin" style="background:${d.color}"><span>${s.n}</span></div>`,
-      iconSize:[26,26], iconAnchor:[13,24], popupAnchor:[0,-22]});
-    const g = `https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`;
-    const m = L.marker([s.lat,s.lng],{icon}).addTo(groups[d.id]);
+    const html = s.start
+      ? `<div class="pin-hotel" style="color:${d.color};border-color:${d.color}">宿</div>`
+      : `<div class="pin" style="background:${d.color}"><span>${s.pin}</span></div>`;
+    const icon=L.divIcon({className:'',html,
+      iconSize:s.start?[24,24]:[26,26],
+      iconAnchor:s.start?[12,12]:[13,24],
+      popupAnchor:s.start?[0,-14]:[0,-22]});
+    const g=`https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`;
+    const m=L.marker([s.lat,s.lng],{icon}).addTo(groups[d.id]);
     m.bindPopup(
       `<div class="pop"><b>${s.name}</b><div class="m">${s.t}　·　${s.note}</div>`+
+      (s.leg?`<div class="lg">${s.leg}</div>`:``)+
       `<a href="${g}" target="_blank" rel="noopener">在 Google 地圖開啟導航</a></div>`);
-    markers[`${s.d}-${s.n}`]=m;
+    markers[s.i]=m;
   });
 });
-fitAll();
-function fitAll(){
-  map.fitBounds(L.latLngBounds(STOPS.map(s=>[s.lat,s.lng])).pad(0.12));
-}
+map.fitBounds(L.latLngBounds(STOPS.map(s=>[s.lat,s.lng])).pad(0.12));
 
-// chips
-const chipsEl = document.getElementById('chips');
-const allChip = el('div','chip all','全部');
-allChip.onclick = ()=>{ const on = allChip.classList.toggle('off');
-  DAYS.forEach(d=>setDay(d.id, !on)); };
+/* chips */
+const chipsEl=document.getElementById('chips');
+const allChip=el('div','chip all','全部');
+allChip.onclick=()=>{const off=allChip.classList.toggle('off'); DAYS.forEach(d=>setDay(d.id,!off));};
 chipsEl.appendChild(allChip);
 DAYS.forEach(d=>{
-  const c = el('div','chip',`<span class="dot"></span>${d.id}`);
-  c.style.color = d.color; c.dataset.day=d.id;
-  c.onclick = ()=>{ const off=c.classList.toggle('off'); setDay(d.id,!off); };
+  const c=el('div','chip',`<span class="dot"></span>${d.id}`);
+  c.style.color=d.color; c.dataset.day=d.id;
+  c.onclick=()=>{const off=c.classList.toggle('off'); setDay(d.id,!off);};
   chipsEl.appendChild(c);
 });
 function setDay(id,show){
-  if(show){ groups[id].addTo(map); } else { map.removeLayer(groups[id]); }
+  if(show) groups[id].addTo(map); else map.removeLayer(groups[id]);
   const c=[...chipsEl.querySelectorAll('.chip')].find(x=>x.dataset.day==id);
   if(c) c.classList.toggle('off',!show);
 }
 
-// list
-const listEl = document.getElementById('list');
+/* list */
+const listEl=document.getElementById('list');
 DAYS.forEach(d=>{
-  const wrap = el('div','day');
-  const h = el('h2','',`<span class="bar" style="background:${d.color}"></span>${d.label}`);
-  const nav = document.createElement('a');
+  const wrap=el('div','day');
+  const h=el('h2','',`<span class="bar" style="background:${d.color}"></span>${d.label}`);
+  const nav=document.createElement('a');
   nav.className='nav-btn'; nav.textContent='本日導航'; nav.href=d.nav;
   nav.target='_blank'; nav.rel='noopener'; nav.style.background=d.color;
   h.appendChild(nav); wrap.appendChild(h);
-  STOPS.filter(s=>s.d===d.id).sort((a,b)=>a.n-b.n).forEach(s=>{
-    const row = el('div','stop',
-      `<div class="num" style="background:${d.color}">${s.n}</div>`+
+  STOPS.filter(s=>s.d===d.id).forEach(s=>{
+    const row=el('div','stop'+(s.start?' start':''),
+      `<div class="num" style="${s.start?`color:${d.color}`:`background:${d.color}`}">${s.pin}</div>`+
       `<div class="body"><div class="nm">${s.name}</div>`+
-      `<div class="meta">${s.t}　·　${s.note}</div></div>`);
-    row.onclick = ()=>{ setDay(d.id,true); map.setView([s.lat,s.lng],13,{animate:true});
-      markers[`${s.d}-${s.n}`].openPopup(); };
+      `<div class="meta">${s.t}　·　${s.note}</div>`+
+      (s.leg?`<div class="leg">${s.leg}</div>`:``)+`</div>`);
+    row.onclick=()=>{
+      setDay(d.id,true);
+      map.setView([s.lat,s.lng],13,{animate:true});
+      markers[s.i].openPopup();
+      if(window.matchMedia('(max-width:760px)').matches) document.body.classList.remove('nav-open');
+    };
     wrap.appendChild(row);
   });
   listEl.appendChild(wrap);
 });
+
+/* hamburger */
+const ham=document.getElementById('ham');
+ham.onclick=()=>{
+  const open=document.body.classList.toggle('nav-open');
+  ham.textContent=open?'✕':'☰';
+};
 
 function el(tag,cls,html){const e=document.createElement(tag);
   if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e;}
